@@ -6,28 +6,24 @@ import (
 	"math"
 )
 
-const (
-	defaultEpsilon            = 1e-10
-	defaultNumberOfIterations = 10
-	defaultInitialValue       = 0.1
-)
-
 type XIRR struct {
+	Tolerance     float64
 	Epsilon       float64
-	NumIterations int
+	MaxIterations int
 	InitialValue  float64
 }
 
 func New() *XIRR {
 	return &XIRR{
-		Epsilon:       defaultEpsilon,
-		NumIterations: defaultNumberOfIterations,
-		InitialValue:  defaultInitialValue,
+		Tolerance:     1e-10,
+		Epsilon:       1e-10,
+		MaxIterations: 100,
+		InitialValue:  0.1,
 	}
 
 }
 
-func (x *XIRR) Compute(cashflows types.CashFlowSlice) (float64, error) {
+func (r *XIRR) Compute(cashflows types.CashFlowSlice) (float64, error) {
 	if len(cashflows) == 0 {
 		return 0, fmt.Errorf("empty slice")
 	}
@@ -44,18 +40,25 @@ func (x *XIRR) Compute(cashflows types.CashFlowSlice) (float64, error) {
 	}
 
 	// Newton's method
-	xn := x.InitialValue
-	for range x.NumIterations {
-		step := -f(xn, durations, values) / df(xn, durations, values)
+	x := r.InitialValue
+	for range r.MaxIterations {
+		y := f(x, durations, values)
+		dy := df(x, durations, values)
 
-		xn += step
-
-		if math.Abs(step) < x.Epsilon {
+		if math.Abs(dy) < r.Epsilon {
 			break
 		}
+
+		dx := -y / dy
+
+		if math.Abs(dx) < r.Epsilon {
+			break
+		}
+
+		x += dx
 	}
 
-	return xn, nil
+	return x, nil
 }
 
 func f(x float64, durations types.FloatSlice, amounts types.FloatSlice) float64 {
